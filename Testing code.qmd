@@ -1,0 +1,51 @@
+---
+title: "Testing code"
+format: html
+---
+
+## Set Up
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl) # reading excel files
+library(ggeffects) # getting model predictions
+library(MuMIn) # model selection
+library(vegan)  #for diversity index
+
+# read in your data here
+xlsx_data <- read_xlsx("LENC_Database_Ind.Assign_2023-2024_Good.xlsx")
+
+```
+
+```{r}
+clean_names <- xlsx_data |> 
+  clean_names() 
+
+bird_colms <- names(clean_names)[19:96] #storing vector of all the bird columns to allow for summarizing later
+
+clean_names <- clean_names %>% 
+  mutate(across(all_of(bird_colms), ~ {
+    val <- readr::parse_number(as.character(.x))  #force character
+  }))
+
+clean_names <- clean_names %>%
+  mutate(across(all_of(bird_colms), ~ as.numeric(.x)))
+
+
+summarized_data <- clean_names |>  
+  rowwise() |> 
+  mutate(
+    bird_abundance = sum(c_across(all_of(bird_colms)), na.rm = TRUE),
+    bird_richness = sum(c_across(all_of(bird_colms)) > 0, na.rm = TRUE),
+    bird_shannon = diversity(c_across(all_of(bird_colms)), index = "shannon")
+  ) |>  
+  ungroup()
+
+
+
+
+
+
+
+```
+
