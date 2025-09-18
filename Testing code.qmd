@@ -23,29 +23,81 @@ clean_names <- xlsx_data |>
 
 bird_colms <- names(clean_names)[19:96] #storing vector of all the bird columns to allow for summarizing later
 
-clean_names <- clean_names %>% 
-  mutate(across(all_of(bird_colms), ~ {
-    val <- readr::parse_number(as.character(.x))  #force character
-  }))
-
-clean_names <- clean_names %>%
-  mutate(across(all_of(bird_colms), ~ as.numeric(.x)))
-
+plant_colms <- names(clean_names)[97:423] #storing vector of all plant columns for summarizing
 
 summarized_data <- clean_names |>  
-  rowwise() |> 
-  mutate(
-    bird_abundance = sum(c_across(all_of(bird_colms)), na.rm = TRUE),
-    bird_richness = sum(c_across(all_of(bird_colms)) > 0, na.rm = TRUE),
-    bird_shannon = diversity(c_across(all_of(bird_colms)), index = "shannon")
-  ) |>  
-  ungroup()
+  rowwise() |> #looking by row, not by column (so calculations are per row)
+  mutate( #adding columns
+    bird_abundance = sum(c_across(all_of(bird_colms)), na.rm = TRUE), #calculate bird abundance
+    bird_richness = sum(c_across(all_of(bird_colms)) > 0, na.rm = TRUE), #calculate bird richness
+    bird_shannon = diversity(c_across(all_of(bird_colms)), index = "shannon"), #calculate bird shannon diversity index
+    plant_richness = sum(c_across(all_of(plant_colms)) > 0, na.rm = TRUE), #calculate plant richness
+    plant_shannon = diversity(c_across(all_of(plant_colms)), index = "shannon") #calculate plant shannon diversity
+  ) |> 
+  ungroup() #ungroup the data so its normal for later
 
 
 
+```
+
+
+```{r}
+
+bird_ab_lat <- summarized_data |> 
+  filter(type_of_survey == "Bird") |> #only survey type point bird
+  group_by(latitude) |> #grouping by location
+  summarise(bird_abundance = sum(bird_abundance, na.rm = TRUE),
+            bird_richness = sum(bird_richness, na.rm = TRUE),
+            bird_shannon = sum(bird_shannon, na.rm = TRUE))
+
+plant_r_lat <- summarized_data |> 
+  filter(type_of_survey == "Transect") |> #only survey type transect for plants
+  group_by(latitude) |> #grouping by location
+  summarise(
+    plant_richness = sum(plant_richness, na.rm = TRUE),
+    percent_trees_and_shrubs = mean(percent_trees_and_shrubs, na.rm = TRUE),
+    number_of_trees = mean(number_of_trees, na.rm = TRUE),
+    percent_build_up = mean(percent_build_up, na.rm = TRUE))
+
+
+combined_summary <- left_join(bird_ab_lat, plant_r_lat, by = "latitude") #join each survey type summaries by location
+
+ggplot(data = combined_summary,
+       aes(x = plant_richness,
+           y = bird_abundance)) +
+  geom_point()
+
+ggplot(data = combined_summary,
+       aes(x = number_of_trees,
+           y = bird_abundance)) + 
+  geom_point()
+
+
+ggplot(data = combined_summary,
+       aes(x = percent_build_up,
+           y = bird_abundance)) + 
+  geom_point()
+
+ggplot(data = combined_summary,
+       aes(x = percent_build_up,
+           y = bird_richness)) + 
+  geom_point()
+
+ggplot(data = combined_summary,
+       aes(x = percent_build_up,
+           y = bird_shannon)) + 
+  geom_point()
+
+```
+
+
+```{r}
 
 
 
 
 ```
+
+
+
 
