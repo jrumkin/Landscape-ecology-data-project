@@ -4,6 +4,7 @@ format: html
 ---
 
 ## Set Up
+
 ```{r}
 library(tidyverse)
 library(janitor)
@@ -39,7 +40,6 @@ summarized_data <- clean_names |>
 
 
 ```
-
 
 ```{r}
 
@@ -90,13 +90,163 @@ ggplot(data = combined_summary,
 
 ```
 
+## Fitting Models
+
+| Model \# | plant richness inc | percent trees inc | number of trees inc | percent built up inc |
+|----|----|----|----|----|
+| 0 (null) |  |  |  |  |
+| 1 (saturated) | x | x | x | x |
+| 2 | x |  |  |  |
+| 3 |  | x |  |  |
+| 4 |  |  | x |  |
+| 5 |  |  |  | x |
+| 6 | x | x |  |  |
+| 7 | x |  | x |  |
+| 8 |  |  | x | x |
+| 9 | x |  |  | x |
 
 ```{r}
 
+# model 0: null model
+model0 <- lm(
+  bird_abundance ~ 1, # formula
+  data = combined_summary # data frame
+)
 
+# model 1: all predictors (saturated)
+model1 <- lm(
+  bird_abundance ~ plant_richness + percent_trees_and_shrubs + number_of_trees + percent_build_up, #formula (this is the saturated model)
+  data = combined_summary #data
+)
+
+#model 2
+model2 <-  lm(
+  bird_abundance ~ plant_richness,
+  data = combined_summary
+)
+
+#model 3
+model3 <- lm(
+  bird_abundance ~ percent_trees_and_shrubs,
+  data = combined_summary
+)
+
+#model 4
+model4 <- lm(
+  bird_abundance ~ number_of_trees,
+  data = combined_summary
+)
+
+
+#model 5
+model5 <- lm(
+  bird_abundance ~ percent_build_up,
+  data = combined_summary
+)
+
+#model 6
+model6 <- lm(
+  bird_abundance ~ plant_richness + percent_trees_and_shrubs,
+  data = combined_summary
+)
+
+#model 7
+model7 <- lm(
+  bird_abundance ~ plant_richness + number_of_trees,
+  data = combined_summary
+)
+
+#model 8
+model8 <- lm(
+  bird_abundance ~ number_of_trees + percent_build_up,
+  data = combined_summary
+)
+
+#model 9
+model9 <-  lm(
+  bird_abundance ~ plant_richness + percent_build_up,
+  data = combined_summary
+)
 
 
 ```
+
+
+## Model Diagnostics
+
+```{r}
+
+par(mfrow = c(2,2))
+plot(model0)
+plot(model1)
+plot(model2)
+plot(model3)
+plot(model4)
+plot(model5)
+plot(model6)
+plot(model7)
+plot(model8)
+plot(model9)
+
+
+```
+
+## Model selection
+
+```{r model-selection}
+AICc(model0,
+     model1,
+     model2,
+     model3,
+     model4, 
+     model5,
+     model6,
+     model7,
+     model8,
+     model9) |> 
+  # arranging output in descending order of AIC
+  arrange(AICc)
+
+#output in the console each model has an AICc value. The values don't mean anything on their own, they are only to compare! We are looking for the smallest one. arranging to list the models from smallest to biggest, and we see that model4 has the smallest AICc value. Again, the magnitude of AICc means literally nothing.
+#AICc is looking for which model is the simplest while still being the best predictor (the more predictor variables you have, the more complexity, the harder is it to use and interpret the model)
+
+```
+
+
+Model 4 has the lowest AICc value of all the models, so this one is the simplest model that still gives accurate predictions.
+
+## Model Predictions
+
+```{r}
+
+model4_predictions <- ggpredict(
+  model4,
+  terms = c("number_of_trees") #predictors
+) |> 
+  rename(number_of_trees = x, #renaming the columns
+         bird_abundance = predicted)
+
+
+```
+
+## Model Prediction Visualization
+
+```{r}
+
+ggplot(data = combined_summary,
+       aes(x = number_of_trees,
+           y = bird_abundance)) +
+  geom_jitter() +
+  geom_pointrange(data = model4_predictions,
+                  aes(x = number_of_trees,
+                          y = bird_abundance,
+                          ymin = conf.low,
+                          ymax = conf.high
+                        ))
+
+
+```
+
 
 
 
