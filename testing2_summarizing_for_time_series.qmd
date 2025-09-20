@@ -1,0 +1,111 @@
+---
+title: "testing2_summarizing_for_time_series"
+format: html
+---
+
+## Set up
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl) # reading excel files
+library(ggeffects) # getting model predictions
+library(MuMIn) # model selection
+library(vegan)  #for diversity index
+library(hillR) #for calculating hill numbers
+
+
+# read in your data here
+orig_data <- read_xlsx("LENC_Database_Ind.Assign_2023-2024_Good.xlsx")
+
+
+```
+
+## Cleaning
+
+```{r}
+
+clean_name_data <- orig_data |> 
+  clean_names() |> 
+  mutate(location_group = if_else(percent_build_up <= 50, "Rural", "Urban"))
+
+
+rural_bird_data <- clean_name_data |> 
+  filter(location_group == "Rural") |> #select only the rows with "rural" as the location_group
+  select(19:96) |> #select only the bird species columns
+  mutate(across(where(is.numeric), ~ replace_na(., 0))) |> #replace any NA with 0's 
+  select(where(~ sum(.) > 0))
+
+rural_bird_matrix <- as.matrix(rural_bird_data)
+
+urban_bird_data <- clean_name_data |> 
+  filter(location_group == "Urban") |> 
+  select(19:96) |> 
+  mutate(across(where(is.numeric), ~ replace_na(., 0))) |> 
+  select(where(~ sum(.) > 0))
+
+
+
+```
+
+
+## Summarizing and Finding Hill Numbers
+
+```{r}
+#goal is to summarize all the data by different groups, this group will be bird surveys grouped by built up percent cut off
+
+hill_rual_bird <- hill_taxa(comm = rural_bird_data, q = 1)
+hill_rural_bird_df <- as.data.frame(hill_rual_bird)
+
+hill_urban_bird <-  hill_taxa(comm = urban_bird_data, q = 1)
+hill_urban_bird_df <- as.data.frame(hill_urban_bird)
+
+
+combined_summary <- cross_join(hill_rural_bird_df, hill_urban_bird_df) #join each survey type summaries by location
+
+
+
+```
+
+❓ How Would You Know Which q to Use?
+
+Use q = 0 if you're interested in species richness only (ignores abundance).
+
+Use q = 1 for a balanced measure sensitive to abundance but not dominated by it.
+
+Use q = 2 to emphasize dominant species and reduce weight of rare ones.
+
+Plotting diversity profiles over a range of q-values (e.g. 0–5) can help you understand diversity patterns more fully.
+
+
+
+
+
+grandson: (playing with pink shift, didn't list ones where pink shift wasnt there)
+
+berlin 30 jan friday
+utrecht 1 feb sunday
+muster (germany) 6 feb friday
+copenhagen 7 feb saturday
+wiesbaden (germany) 21 feb saturday
+birmingham (uk) 28 feb saturday
+sofia (bulgaria) 7 march saturday
+
+
+callous daoboys: (no knives & Love Rareley <- only in UK)
+
+hamburg (germany) 6 feb friday
+berlin (germany) 7 feb saturday
+lyon (france) 14 feb saturday
+brighton (uk) 20 feb friday
+southhampton (uk) 21 feb saturday
+bristol (uk) 27 feb friday
+london (uk) 28 feb saturday
+
+
+
+
+
+
+
+

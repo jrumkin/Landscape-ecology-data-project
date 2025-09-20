@@ -13,6 +13,7 @@ library(ggeffects) # getting model predictions
 library(MuMIn) # model selection
 library(vegan)  #for diversity index
 
+
 # read in your data here
 xlsx_data <- read_xlsx("LENC_Database_Ind.Assign_2023-2024_Good.xlsx")
 
