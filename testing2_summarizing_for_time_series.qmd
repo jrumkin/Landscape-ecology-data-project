@@ -25,18 +25,18 @@ orig_data <- read_xlsx("LENC_Database_Ind.Assign_2023-2024_Good.xlsx")
 
 ```{r}
 
-clean_name_data <- orig_data |> 
+clean_name_data <- orig_data |> #clean names data frame
   clean_names() |> 
-  mutate(location_group = if_else(percent_build_up <= 50, "Rural", "Urban"))
+  mutate(location_group = if_else(percent_build_up <= 50, "Rural", "Urban")) #create new column, rural vs urban based on % built up
+#results change quite a bit when changing the % cutoff for percent build up, explore that
 
 
 rural_bird_data <- clean_name_data |> 
-  filter(location_group == "Rural") |> #select only the rows with "rural" as the location_group
+  filter(rural_urban == "Rural") |> #select only the rows with "rural" as the location_group
   select(19:96) |> #select only the bird species columns
   mutate(across(where(is.numeric), ~ replace_na(., 0))) |> #replace any NA with 0's 
   select(where(~ sum(.) > 0))
 
-rural_bird_matrix <- as.matrix(rural_bird_data)
 
 urban_bird_data <- clean_name_data |> 
   filter(location_group == "Urban") |> 
@@ -67,7 +67,7 @@ combined_summary <- cross_join(hill_rural_bird_df, hill_urban_bird_df) #join eac
 
 ```
 
-❓ How Would You Know Which q to Use?
+(from online) How Would You Know Which q to Use?
 
 Use q = 0 if you're interested in species richness only (ignores abundance).
 
@@ -77,8 +77,87 @@ Use q = 2 to emphasize dominant species and reduce weight of rare ones.
 
 Plotting diversity profiles over a range of q-values (e.g. 0–5) can help you understand diversity patterns more fully.
 
+## Exploratory Visualizatoins
+
+```{r}
+
+combined_long <- pivot_longer(data = combined_summary,
+             cols = everything())
+
+ggplot(data = combined_long,
+       aes(x = name,
+           y = value)) +
+  geom_boxplot()
+
+mean_hill_bird_2023_24 <- combined_summary |> 
+  summarise(mean_rural_hill = mean(hill_rual_bird),
+            mean_urban_hill = mean(hill_urban_bird))
+
+```
+
+2.374 & 2.267 respectively
+
+## plant diversity and summaries
+
+```{r}
 
 
+rural_plant_data <- clean_name_data |> 
+  filter(location_group == "Rural") |> #select only the rows with "rural" as the location_group
+  select(97:423) |> #select only the bird species columns
+  mutate(across(where(is.numeric), ~ replace_na(., 0))) |> #replace any NA with 0's 
+  select(where(~ sum(.) > 0))
+
+
+urban_plant_data <- clean_name_data |> 
+  filter(location_group == "Urban") |> 
+  select(97:423) |> 
+  mutate(across(where(is.numeric), ~ replace_na(., 0))) |> 
+  select(where(~ sum(.) > 0))
+
+#find hill numbers for plants using the same technique as birds
+
+hill_rual_plant <- hill_taxa(comm = rural_plant_data, q = 1)
+hill_rural_plant_df <- as.data.frame(hill_rual_plant)
+
+hill_urban_plant <-  hill_taxa(comm = urban_plant_data, q = 1)
+hill_urban_plant_df <- as.data.frame(hill_urban_plant)
+
+
+combined_summary_plant <- cross_join(hill_rural_plant_df, hill_urban_plant_df) #join each survey type summaries by location
+
+combined_long_plant <- pivot_longer(data = combined_summary_plant,
+             cols = everything())
+
+ggplot(data = combined_long_plant,
+       aes(x = name,
+           y = value)) +
+  geom_boxplot() +
+  geom_jitter(alpha = .05)
+
+mean_hill_plant_2023_24 <- combined_summary_plant |> 
+  summarise(mean_rural_hill = mean(hill_rual_plant),
+            mean_urban_hill = mean(hill_urban_plant))
+
+
+
+```
+
+```{r}
+
+ggplot(data = NULL) +
+  geom_jitter(data = combined_long,
+             aes(x = name,
+                 y = value)) +
+  geom_jitter(data = combined_long_plant,
+             aes(x = name,
+                 y = value))
+
+#why does the rural data have a lot of variation and decimals, but the urban data is much more even numbers with fewer decimals and the same repeating values throughout?
+
+
+
+```
 
 
 grandson: (playing with pink shift, didn't list ones where pink shift wasnt there)

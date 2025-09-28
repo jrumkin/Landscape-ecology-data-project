@@ -1,0 +1,114 @@
+---
+title: "Group_Assignment_Code"
+format: html
+---
+
+
+## Set Up
+```{r}
+
+library(tidyverse)
+library(here) # file organization
+library(janitor)
+library(readxl) # reading excel files
+library(ggeffects) # getting model predictions
+library(MuMIn) # model selection
+library(vegan)  #for diversity index
+library(hillR) #for calculating hill numbers
+
+
+# read in your data
+orig_data <- read_xlsx(
+  #file path
+  here("Project Data", "Updated_Data_Entry_2025_26.xlsx"),
+  #specify the sheet I want to read in
+  sheet = "Data entry") |> 
+  clean_names() |>  #clean column names
+  select(-c(367:845)) |> #remove empty columns 
+  mutate(across(15:366, ~ as.numeric(as.character(.)))) |>  #force numeric in all species columns, non-numeric become NA
+  mutate(across(15:366, ~ replace_na(., 0))) #replace NA with 0
+
+
+
+
+
+
+```
+
+
+## Data Proccesing
+```{r}
+
+rural_bird_data <- orig_data |> 
+  filter(rural_urban == "Rural") |> #select only the rows "Rural" 
+  select(15:109) |> #select only the bird species columns
+  select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
+  mutate(total = rowSums(across(everything()))) #create row wise totals across selected species 
+
+urban_bird_data <- orig_data |> 
+  filter(rural_urban == "Urban") |> 
+  select(15:109) |> 
+  select(where(~ sum(.) > 0)) |> 
+  mutate(total = rowSums(across(everything())))
+
+rural_plant_data <- orig_data |> 
+  filter(rural_urban == "Rural") |> #select only the rows "Rural" 
+  select(110:366) |> #select only the plant species columns
+  select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
+  mutate(total = rowSums(across(everything())))
+
+urban_plant_data <- orig_data |> 
+  filter(rural_urban == "Urban") |> 
+  select(110:366) |> 
+  select(where(~ sum(.) > 0)) |> 
+  mutate(total = rowSums(across(everything())))
+  
+
+
+
+
+```
+
+## reorganize data frames
+
+```{r}
+
+urban_bird_data_long <- urban_bird_data |> #new data frame in long format
+  pivot_longer(cols = -c(total), #pivot all columns except "total"
+               names_to = "Species", #new column name of "species"
+               values_to = "Abundance") |> #new column of abundance per species
+  filter(Abundance > 0) #remove any rows where abundance is 0
+
+rural_bird_data_long <- rural_bird_data |> 
+  pivot_longer(cols = -c(total), #pivot all columns except "total"
+               names_to = "Species", #new column name of "species"
+               values_to = "Abundance") |> #new column of abundance per species
+  filter(Abundance > 0) #remove any rows where abundance is 0
+
+urban_plant_data_long <- urban_plant_data |> 
+  pivot_longer(cols = -c(total), #pivot all columns except "total"
+               names_to = "Species", #new column name of "species"
+               values_to = "Abundance") |> #new column of abundance per species
+  filter(Abundance > 0) #remove any rows where abundance is 0
+
+rural_plant_data_long <-  rural_plant_data |> 
+  pivot_longer(cols = -c(total), #pivot all columns except "total"
+               names_to = "Species", #new column name of "species"
+               values_to = "Abundance") |> #new column of abundance per species
+  filter(Abundance > 0) #remove any rows where abundance is 0
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
