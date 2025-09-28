@@ -14,7 +14,7 @@ library(readxl) # reading excel files
 library(ggeffects) # getting model predictions
 library(MuMIn) # model selection
 library(vegan)  #for diversity index
-library(hillR) #for calculating hill numbers
+library(hillR) #for calculating hill numbers #not used?
 
 
 # read in your data
@@ -43,66 +43,74 @@ rural_bird_data <- orig_data |>
   filter(rural_urban == "Rural") |> #select only the rows "Rural" 
   select(15:109) |> #select only the bird species columns
   select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
-  mutate(total = rowSums(across(everything()))) #create row wise totals across selected species 
+  mutate(total = rowSums(across(everything()))) |>  #create row wise totals across selected species 
+   rowwise() |> #following functions will be done by the row (bc column is default)
+  mutate( #add new columns
+    q0 = sum(c_across(-total) > 0), #Hill q0 column
+    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
+    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
+  ) |> 
+  ungroup() 
+
+
 
 urban_bird_data <- orig_data |> 
   filter(rural_urban == "Urban") |> 
   select(15:109) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(everything())))
+  mutate(total = rowSums(across(everything()))) |> 
+  rowwise() |> #following functions will be done by the row (bc column is default)
+  mutate( #add new columns
+    q0 = sum(c_across(-total) > 0), #Hill q0 column
+    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
+    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
+  ) |> 
+  ungroup()
+
+
 
 rural_plant_data <- orig_data |> 
   filter(rural_urban == "Rural") |> #select only the rows "Rural" 
   select(110:366) |> #select only the plant species columns
   select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
-  mutate(total = rowSums(across(everything())))
+  mutate(total = rowSums(across(everything()))) |> 
+  rowwise() |> #following functions will be done by the row (bc column is default)
+  mutate( #add new columns
+    q0 = sum(c_across(-total) > 0), #Hill q0 column
+    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
+    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
+  ) |> 
+  ungroup()
+
+
 
 urban_plant_data <- orig_data |> 
   filter(rural_urban == "Urban") |> 
   select(110:366) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(everything())))
+  mutate(total = rowSums(across(everything()))) |> 
+  rowwise() |> #following functions will be done by the row (bc column is default)
+  mutate( #add new columns
+    q0 = sum(c_across(-total) > 0), #Hill q0 column
+    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
+    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
+  ) |> 
+  ungroup()
   
-
-
-
 
 ```
 
-## reorganize data frames
+## Exploratory Visualizations
 
 ```{r}
 
-urban_bird_data_long <- urban_bird_data |> #new data frame in long format
-  pivot_longer(cols = -c(total), #pivot all columns except "total"
-               names_to = "Species", #new column name of "species"
-               values_to = "Abundance") |> #new column of abundance per species
-  filter(Abundance > 0) #remove any rows where abundance is 0
+ggplot(data = rural_bird_data,
+       aes(x = ))
 
-rural_bird_data_long <- rural_bird_data |> 
-  pivot_longer(cols = -c(total), #pivot all columns except "total"
-               names_to = "Species", #new column name of "species"
-               values_to = "Abundance") |> #new column of abundance per species
-  filter(Abundance > 0) #remove any rows where abundance is 0
-
-urban_plant_data_long <- urban_plant_data |> 
-  pivot_longer(cols = -c(total), #pivot all columns except "total"
-               names_to = "Species", #new column name of "species"
-               values_to = "Abundance") |> #new column of abundance per species
-  filter(Abundance > 0) #remove any rows where abundance is 0
-
-rural_plant_data_long <-  rural_plant_data |> 
-  pivot_longer(cols = -c(total), #pivot all columns except "total"
-               names_to = "Species", #new column name of "species"
-               values_to = "Abundance") |> #new column of abundance per species
-  filter(Abundance > 0) #remove any rows where abundance is 0
-
+#we need to clean the latitude column but clean it first so we can group surveys by location? or something to join the data frames by?
 
 
 ```
-
-
-
 
 
 
