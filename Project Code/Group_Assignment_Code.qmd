@@ -11,9 +11,9 @@ library(tidyverse)
 library(here) # file organization
 library(janitor)
 library(readxl) # reading excel files
-library(ggeffects) # getting model predictions
-library(MuMIn) # model selection
-library(vegan)  #for diversity index
+library(ggeffects) # getting model predictions #not used
+library(MuMIn) # model selection #not used
+library(vegan)  #for diversity index #not used?
 library(hillR) #for calculating hill numbers #not used?
 
 
@@ -24,69 +24,70 @@ orig_data <- read_xlsx(
   #specify the sheet I want to read in
   sheet = "Data entry") |> 
   clean_names() |>  #clean column names
-  select(-c(367:845)) |> #remove empty columns 
-  mutate(across(15:366, ~ as.numeric(as.character(.)))) |>  #force numeric in all species columns, non-numeric become NA
-  mutate(across(15:366, ~ replace_na(., 0))) #replace NA with 0
-
-
-
+  select(-c(366:844)) |> #remove empty columns
+  mutate(across(14:365, ~ as.numeric(as.character(.)))) |>  #force numeric in all species columns, non-numeric become NA
+  mutate(across(14:365, ~ replace_na(., 0))) |>  #replace NA with 0
+  mutate(
+    Type = case_when(
+      grepl("Bird", type_of_survey, ignore.case = TRUE) ~ "Bird",
+      grepl("Transect", type_of_survey, ignore.case = TRUE) ~ "Plant",
+      TRUE ~ "Other" ))
 
 
 
 ```
 
 
+
+
+
 ## Data Proccesing
 ```{r}
 
 rural_bird_data <- orig_data |> 
-  filter(rural_urban == "Rural") |> #select only the rows "Rural" 
-  select(15:109) |> #select only the bird species columns
-  select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
-  mutate(total = rowSums(across(everything()))) |>  #create row wise totals across selected species 
-   rowwise() |> #following functions will be done by the row (bc column is default)
-  mutate( #add new columns
-    q0 = sum(c_across(-total) > 0), #Hill q0 column
-    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
-    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
-  ) |> 
-  ungroup() 
-
-
-
-urban_bird_data <- orig_data |> 
-  filter(rural_urban == "Urban") |> 
-  select(15:109) |> 
+  filter(rural_urban == "Rural",
+         Type == "Bird") |> 
+  select(1, 15:109) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(everything()))) |> 
-  rowwise() |> #following functions will be done by the row (bc column is default)
-  mutate( #add new columns
-    q0 = sum(c_across(-total) > 0), #Hill q0 column
-    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
-    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
-  ) |> 
-  ungroup()
-
-
-
+  mutate(total = rowSums(across(-1))) |>  
+  aggregate(. ~ observer_id, sum, na.rm = TRUE)
+  
+  
+urban_bird_data <- orig_data |> 
+  filter(rural_urban == "Urban",
+         Type == "Bird") |> 
+  select(1, 15:109) |> 
+  select(where(~ sum(.) > 0)) |> 
+  mutate(total = rowSums(across(-1))) |>  
+  aggregate(. ~ observer_id, sum, na.rm = TRUE)
+  
+ 
 rural_plant_data <- orig_data |> 
-  filter(rural_urban == "Rural") |> #select only the rows "Rural" 
-  select(110:366) |> #select only the plant species columns
-  select(where(~ sum(.) > 0)) |>  #keeps only columns(species) that have at least one observation in the filtered sample set
-  mutate(total = rowSums(across(everything()))) |> 
-  rowwise() |> #following functions will be done by the row (bc column is default)
-  mutate( #add new columns
-    q0 = sum(c_across(-total) > 0), #Hill q0 column
-    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
-    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
-  ) |> 
-  ungroup()
+  filter(rural_urban == "Rural",
+         Type == "Plant") |> 
+  select(1, 109:365) |> 
+  select(where(~ sum(.) > 0)) |> 
+  mutate(total = rowSums(across(-1))) 
+    
+   
+urban_plant_data <- orig_data |> 
+  filter(rural_urban == "Urban",
+         Type == "Plant") |> 
+  select(1, 109:365) |> 
+  select(where(~ sum(.) > 0)) |> 
+  mutate(total = rowSums(across(-1))) 
 
+
+  
+  
+
+ 
+  
 
 
 urban_plant_data <- orig_data |> 
   filter(rural_urban == "Urban") |> 
-  select(110:366) |> 
+  select(1, 110:366) |> 
   select(where(~ sum(.) > 0)) |> 
   mutate(total = rowSums(across(everything()))) |> 
   rowwise() |> #following functions will be done by the row (bc column is default)
