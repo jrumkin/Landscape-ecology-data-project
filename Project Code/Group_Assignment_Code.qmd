@@ -11,10 +11,6 @@ library(tidyverse)
 library(here) # file organization
 library(janitor)
 library(readxl) # reading excel files
-library(ggeffects) # getting model predictions #not used
-library(MuMIn) # model selection #not used
-library(vegan)  #for diversity index #not used?
-library(hillR) #for calculating hill numbers #not used?
 
 
 # read in your data
@@ -49,7 +45,7 @@ rural_bird_data <- orig_data |>
          Type == "Bird") |> 
   select(1, 15:109) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(-1))) |>  
+  mutate(total_abundance = rowSums(across(-1))) |>  
   aggregate(. ~ observer_id, sum, na.rm = TRUE)
   
   
@@ -58,7 +54,7 @@ urban_bird_data <- orig_data |>
          Type == "Bird") |> 
   select(1, 15:109) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(-1))) |>  
+  mutate(total_abundance = rowSums(across(-1))) |>  
   aggregate(. ~ observer_id, sum, na.rm = TRUE)
   
  
@@ -67,7 +63,7 @@ rural_plant_data <- orig_data |>
          Type == "Plant") |> 
   select(1, 109:365) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(-1))) 
+  mutate(total_abundance = rowSums(across(-1))) 
     
    
 urban_plant_data <- orig_data |> 
@@ -75,40 +71,51 @@ urban_plant_data <- orig_data |>
          Type == "Plant") |> 
   select(1, 109:365) |> 
   select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(-1))) 
+  mutate(total_abundance = rowSums(across(-1))) 
 
-
-  
-  
-
- 
-  
-
-
-urban_plant_data <- orig_data |> 
-  filter(rural_urban == "Urban") |> 
-  select(1, 110:366) |> 
-  select(where(~ sum(.) > 0)) |> 
-  mutate(total = rowSums(across(everything()))) |> 
-  rowwise() |> #following functions will be done by the row (bc column is default)
-  mutate( #add new columns
-    q0 = sum(c_across(-total) > 0), #Hill q0 column
-    q1 = exp(-sum((c_across(-total) / total) * log(c_across(-total) / total), na.rm = TRUE)),
-    q2 = 1 / sum((c_across(-total) / total)^2, na.rm = TRUE)
-  ) |> 
-  ungroup()
   
 
 ```
+
+
+## Pivot 
+```{r}
+
+rural_bird_long <- rural_bird_data |> 
+  pivot_longer(cols = blauwe_reiger:madeliefje,
+               names_to = "Species",
+               values_to = "Abundance") |> 
+  mutate(Relative_abundance= Abundance/ total_abundance) |> 
+  filter(Relative_abundance != 0) |> 
+  group_by(observer_id) |> 
+  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            q2 = sum(Relative_abundance^2)^(1/(1-2))) |> 
+  pivot_longer(q0:q2,
+               names_to = "Diversity Order",
+               names_prefix = "q",
+               names_transform = as.numeric,
+               values_to = "Diversity") |> 
+  pivot_wider(names_from = observer_id,
+              values_from = "Diversity")
+
+
+```
+
+
+
+
+
+
 
 ## Exploratory Visualizations
 
 ```{r}
 
-ggplot(data = rural_bird_data,
-       aes(x = ))
+ggplot(data = ,
+       aes(x = ,
+           y = ))
 
-#we need to clean the latitude column but clean it first so we can group surveys by location? or something to join the data frames by?
 
 
 ```
