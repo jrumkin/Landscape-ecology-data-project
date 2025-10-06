@@ -40,36 +40,36 @@ orig_data <- read_xlsx(
 ## Data Proccesing
 ```{r}
 
-rural_bird_data <- orig_data |> 
+rural_bird_data <- orig_data |> #make new data frame, just rural bird data
   filter(rural_urban == "Rural",
          Type == "Bird") |> 
-  select(1, 15:109) |> 
-  select(where(~ sum(.) > 0)) |> 
-  mutate(total_abundance = rowSums(across(-1))) |>  
-  aggregate(. ~ observer_id, sum, na.rm = TRUE)
+  select(1, blauwe_reiger:madeliefje) |> #select observer ID and bird columns
+  select(where(~ sum(.) > 0)) |> #remove column that have zero observations
+  mutate(total_abundance = rowSums(across(-1))) |>  #calculate total abundance per survey
+  aggregate(. ~ observer_id, sum, na.rm = TRUE) #sum the bird counts and total abundance for each location using observer ID, ie combining bird surveys 0 m + 50 m + 100 m
   
   
-urban_bird_data <- orig_data |> 
+urban_bird_data <- orig_data |> #create new data frame, just urban bird surveys
   filter(rural_urban == "Urban",
          Type == "Bird") |> 
-  select(1, 15:109) |> 
+  select(1, blauwe_reiger:madeliefje) |> 
   select(where(~ sum(.) > 0)) |> 
   mutate(total_abundance = rowSums(across(-1))) |>  
   aggregate(. ~ observer_id, sum, na.rm = TRUE)
   
  
-rural_plant_data <- orig_data |> 
+rural_plant_data <- orig_data |> #new data frame, rural plant data only
   filter(rural_urban == "Rural",
          Type == "Plant") |> 
-  select(1, 109:365) |> 
+  select(1, paardenbloem:schijnaardbei) |> #selecting observer ID and plant columns only
   select(where(~ sum(.) > 0)) |> 
   mutate(total_abundance = rowSums(across(-1))) 
     
    
-urban_plant_data <- orig_data |> 
+urban_plant_data <- orig_data |> #new data frame, urban plant data only
   filter(rural_urban == "Urban",
          Type == "Plant") |> 
-  select(1, 109:365) |> 
+  select(1, paardenbloem:schijnaardbei) |> #selecting observer ID and plant columns only
   select(where(~ sum(.) > 0)) |> 
   mutate(total_abundance = rowSums(across(-1))) 
 
@@ -78,31 +78,83 @@ urban_plant_data <- orig_data |>
 ```
 
 
-## Pivot 
+## Calculate Abundance and Hill Numbers 
 ```{r}
 
-rural_bird_long <- rural_bird_data |> 
-  pivot_longer(cols = blauwe_reiger:madeliefje,
+rural_bird_hill <- rural_bird_data |> #new data frame
+  pivot_longer(cols = blauwe_reiger:madeliefje, #change data to long format
                names_to = "Species",
                values_to = "Abundance") |> 
+  group_by(observer_id) |> 
+  mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |>
   mutate(Relative_abundance= Abundance/ total_abundance) |> 
   filter(Relative_abundance != 0) |> 
-  group_by(observer_id) |> 
   summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
             q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
-            q2 = sum(Relative_abundance^2)^(1/(1-2))) |> 
-  pivot_longer(q0:q2,
-               names_to = "Diversity Order",
-               names_prefix = "q",
-               names_transform = as.numeric,
-               values_to = "Diversity") |> 
-  pivot_wider(names_from = observer_id,
-              values_from = "Diversity")
+            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            bird_total_abundance = unique(total_abundance))
+  
+
+
+
+urban_bird_hill <- urban_bird_data |> #new data frame
+  pivot_longer(cols = blauwe_reiger:madeliefje, #change data to long format, selecting bird columns
+               names_to = "Species",
+               values_to = "Abundance") |> 
+  group_by(observer_id) |> 
+  mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
+  mutate(Relative_abundance= Abundance/ total_abundance) |> 
+  filter(Relative_abundance != 0) |> 
+  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            bird_total_abundance = unique(total_abundance))
+
+
+
+rural_plant_hill <- rural_plant_data |> 
+  pivot_longer(cols = paardenbloem:garlic_mustard, #change data to long format, select plant columns
+               names_to = "Species",
+               values_to = "Abundance") |> 
+  group_by(observer_id) |> 
+  mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
+  mutate(Relative_abundance= Abundance/ total_abundance) |> 
+  filter(Relative_abundance != 0) |> 
+  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            plant_total_abundance = unique(total_abundance))
+
+
+
+
+urban_plant_hill <- urban_plant_data |> 
+  pivot_longer(cols = paardenbloem:rough_hawks_beard, #change data to long format, select plant columns
+               names_to = "Species",
+               values_to = "Abundance") |> 
+  group_by(observer_id) |> 
+  mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
+  mutate(Relative_abundance= Abundance/ total_abundance) |> 
+  filter(Relative_abundance != 0) |> 
+  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            plant_total_abundance = unique(total_abundance))
 
 
 ```
 
 
+## Join Tables
+```{r}
+
+
+rural_data_both <-  left_join(rural_bird_hill, rural_plant_hill, by = "observer_id")
+
+urban_data_both <-  left_join(urban_bird_hill, urban_plant_hill, by = "observer_id")
+
+
+```
 
 
 
@@ -111,11 +163,6 @@ rural_bird_long <- rural_bird_data |>
 ## Exploratory Visualizations
 
 ```{r}
-
-ggplot(data = ,
-       aes(x = ,
-           y = ))
-
 
 
 ```
