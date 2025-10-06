@@ -158,16 +158,38 @@ urban_data_both <-  left_join(urban_bird_hill, urban_plant_hill, by = "observer_
 
 
 
-
-
 ## Exploratory Visualizations
 
 ```{r}
+#rural plant q2 diversity vs bird abundance
+ggplot(data = rural_data_both,
+       aes(x = q2.y,
+           y = bird_total_abundance)) +
+  geom_point()
+
+#urban plant q2 diversity vs bird abundance
+ggplot(data = urban_data_both,
+       aes(x = q2.y,
+           y = bird_total_abundance)) +
+  geom_point()
+
+#rural plant q1 diversity vs bird abundance
+ggplot(data = rural_data_both,
+       aes(x = q1.y,
+           y = bird_total_abundance)) +
+  geom_point()
 
 
 ```
 
 
+## Check Data Normality
+```{r}
+
+
+
+
+```
 
 
 
