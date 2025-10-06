@@ -69,7 +69,7 @@ rural_plant_data <- orig_data |> #new data frame, rural plant data only
 urban_plant_data <- orig_data |> #new data frame, urban plant data only
   filter(rural_urban == "Urban",
          Type == "Plant") |> 
-  select(1, paardenbloem:schijnaardbei) |> #selecting observer ID and plant columns only
+  select(1, paardenbloem:schijnaardbei) |> #selecting observer ID and plant columns only #is this wrong?
   select(where(~ sum(.) > 0)) |> 
   mutate(total_abundance = rowSums(across(-1))) 
 
@@ -180,19 +180,50 @@ ggplot(data = rural_data_both,
   geom_point()
 
 
+#boxplots
+ggplot(data = urban_data_both,
+       aes(y = bird_total_abundance)) +
+  geom_boxplot()
+
+ggplot(data = rural_data_both,
+       aes(y = bird_total_abundance)) +
+  geom_boxplot()
+
 ```
 
 
-## Check Data Normality
+## Check Data Correlation
 ```{r}
 
+pearson_urban_q2 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q2.y, method = "pearson", use = "complete.obs")
+pearson_urban_q2
+
+pearson_urban_q1 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q1.y, method = "pearson", use = "complete.obs")
+pearson_urban_q1
+
+pearson_urban_q0 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q0.y, method = "pearson", use = "complete.obs")
+pearson_urban_q0
 
 
+
+pearson_rural_q2 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q2.y, method = "pearson", use = "complete.obs")
+pearson_rural_q2
+
+pearson_rural_q1 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q1.y, method = "pearson", use = "complete.obs")
+pearson_rural_q1
+
+pearson_rural_q0 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q0.y, method = "pearson", use = "complete.obs")
+pearson_rural_q0
+
+mean(urban_data_both$bird_total_abundance)
+mean(rural_data_both$bird_total_abundance)
+#t test or looking for +- for means between sites
 
 ```
 
 
-
+- difference between urban and rural values
+- check data normality whenver possible
 
 
 
