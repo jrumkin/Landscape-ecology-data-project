@@ -89,10 +89,10 @@ rural_bird_hill <- rural_bird_data |> #new data frame
   mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |>
   mutate(Relative_abundance= Abundance/ total_abundance) |> 
   filter(Relative_abundance != 0) |> 
-  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
-            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
-            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
-            bird_total_abundance = unique(total_abundance))
+  summarise(rural_bird_q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            rural_bird_q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            rural_bird_q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            rural_bird_total_abundance = unique(total_abundance))
   
 
 
@@ -105,10 +105,10 @@ urban_bird_hill <- urban_bird_data |> #new data frame
   mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
   mutate(Relative_abundance= Abundance/ total_abundance) |> 
   filter(Relative_abundance != 0) |> 
-  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
-            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
-            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
-            bird_total_abundance = unique(total_abundance))
+  summarise(urban_bird_q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            urban_bird_q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            urban_bird_q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            urban_bird_total_abundance = unique(total_abundance))
 
 
 
@@ -120,10 +120,10 @@ rural_plant_hill <- rural_plant_data |>
   mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
   mutate(Relative_abundance= Abundance/ total_abundance) |> 
   filter(Relative_abundance != 0) |> 
-  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
-            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
-            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
-            plant_total_abundance = unique(total_abundance))
+  summarise(rural_plant_q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            rural_plant_q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            rural_plant_q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            rural_plant_total_abundance = unique(total_abundance))
 
 
 
@@ -136,10 +136,10 @@ urban_plant_hill <- urban_plant_data |>
   mutate(total_abundance = sum(Abundance, na.rm = TRUE)) |> #calculating total_abundance
   mutate(Relative_abundance= Abundance/ total_abundance) |> 
   filter(Relative_abundance != 0) |> 
-  summarise(q0 = sum(Relative_abundance^0)^(1/(1-0)),
-            q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
-            q2 = sum(Relative_abundance^2)^(1/(1-2)), 
-            plant_total_abundance = unique(total_abundance))
+  summarise(urban_plant_q0 = sum(Relative_abundance^0)^(1/(1-0)),
+            urban_plant_q1 = exp(-sum(Relative_abundance * log(Relative_abundance))),
+            urban_plant_q2 = sum(Relative_abundance^2)^(1/(1-2)), 
+            urban_plant_total_abundance = unique(total_abundance))
 
 
 ```
@@ -153,6 +153,17 @@ rural_data_both <-  left_join(rural_bird_hill, rural_plant_hill, by = "observer_
 
 urban_data_both <-  left_join(urban_bird_hill, urban_plant_hill, by = "observer_id")
 
+all_data <-  left_join(rural_data_both, urban_data_both, by = "observer_id")
+
+all_data_long <- all_data |> 
+  select(-observer_id) |> 
+  pivot_longer(
+    cols = matches("^(urban|rural)_"),
+    names_to = c("location", "group", "measure"),
+    names_pattern = "^(urban|rural)_(bird|plant)_(.+)$",
+    values_to = "value"
+  )
+
 
 ```
 
@@ -162,69 +173,230 @@ urban_data_both <-  left_join(urban_bird_hill, urban_plant_hill, by = "observer_
 
 ```{r}
 #rural plant q2 diversity vs bird abundance
-ggplot(data = rural_data_both,
-       aes(x = q2.y,
-           y = bird_total_abundance)) +
+ggplot(data = all_data,
+       aes(x = rural_plant_q2,
+           y = rural_bird_total_abundance)) +
   geom_point()
 
 #urban plant q2 diversity vs bird abundance
-ggplot(data = urban_data_both,
-       aes(x = q2.y,
-           y = bird_total_abundance)) +
+ggplot(data = all_data,
+       aes(x = urban_plant_q2,
+           y = urban_bird_total_abundance)) +
   geom_point()
 
 #rural plant q1 diversity vs bird abundance
-ggplot(data = rural_data_both,
-       aes(x = q1.y,
-           y = bird_total_abundance)) +
+ggplot(data = all_data,
+       aes(x = rural_plant_q1,
+           y = rural_bird_total_abundance)) +
   geom_point()
 
 
 #boxplots
-ggplot(data = urban_data_both,
-       aes(y = bird_total_abundance)) +
+ggplot(data = all_data,
+       aes(y = urban_bird_total_abundance)) +
   geom_boxplot()
 
-ggplot(data = rural_data_both,
-       aes(y = bird_total_abundance)) +
+ggplot(data = all_data,
+       aes(y = rural_bird_total_abundance)) +
   geom_boxplot()
+
+
 
 ```
 
 
-## Check Data Correlation
+## Pearson Correlation
 ```{r}
 
-pearson_urban_q2 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q2.y, method = "pearson", use = "complete.obs")
+pearson_urban_q2 <- cor.test(all_data$urban_bird_total_abundance, all_data$urban_plant_q2, method = "pearson", use = "complete.obs")
 pearson_urban_q2
 
-pearson_urban_q1 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q1.y, method = "pearson", use = "complete.obs")
+pearson_urban_q1 <- cor.test(all_data$urban_bird_total_abundance, all_data$urban_plant_q1, method = "pearson", use = "complete.obs")
 pearson_urban_q1
 
-pearson_urban_q0 <- cor.test(urban_data_both$bird_total_abundance, urban_data_both$q0.y, method = "pearson", use = "complete.obs")
+pearson_urban_q0 <- cor.test(all_data$urban_bird_total_abundance, all_data$urban_plant_q0, method = "pearson", use = "complete.obs")
 pearson_urban_q0
 
 
 
-pearson_rural_q2 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q2.y, method = "pearson", use = "complete.obs")
+pearson_rural_q2 <- cor.test(all_data$rural_bird_total_abundance, all_data$rural_plant_q2, method = "pearson", use = "complete.obs")
 pearson_rural_q2
 
-pearson_rural_q1 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q1.y, method = "pearson", use = "complete.obs")
+pearson_rural_q1 <- cor.test(all_data$rural_bird_total_abundance, all_data$rural_plant_q1, method = "pearson", use = "complete.obs")
 pearson_rural_q1
 
-pearson_rural_q0 <- cor.test(rural_data_both$bird_total_abundance, rural_data_both$q0.y, method = "pearson", use = "complete.obs")
+pearson_rural_q0 <- cor.test(all_data$rural_bird_total_abundance, all_data$rural_plant_q0, method = "pearson", use = "complete.obs")
 pearson_rural_q0
 
-mean(urban_data_both$bird_total_abundance)
-mean(rural_data_both$bird_total_abundance)
+mean(all_data$urban_bird_total_abundance, na.rm = TRUE)
+mean(all_data$rural_bird_total_abundance, na.rm = TRUE)
 #t test or looking for +- for means between sites
 
 ```
 
 
 - difference between urban and rural values
-- check data normality whenver possible
+- check data normality whenever possible
+
+## Checking for Normality
+```{r}
+
+ggplot(data = all_data, #using ggplot to visualize data
+       aes(sample = urban_bird_total_abundance)) +  
+    geom_qq_line(color = "purple") + #geometry is a qq plot with a line
+    geom_qq()
+
+ggplot(data = all_data,
+       aes(sample = rural_bird_total_abundance)) +
+  geom_qq_line(color = "purple") +
+  geom_qq()
+
+#result: bird abundances are not normally distributed
+
+
+ggplot(
+  all_data_long |> 
+    filter(group == "bird", 
+           measure == "total_abundance"),
+  aes(sample = value)) +
+  geom_qq_line(color = "purple") +
+  geom_qq() +
+  facet_wrap(~ location) +
+  theme_minimal() +
+  labs(
+    title = "Normality QQ Plot of Bird Abundance",
+    x = element_blank(),
+    y = element_blank()
+  )
+
+
+ggplot(
+  all_data_long |> 
+    filter(group == "plant", 
+           measure == "q0"),
+  aes(sample = value)) +
+  geom_qq_line(color = "purple") +
+  geom_qq() +
+  facet_wrap(~ location) +
+  theme_minimal() +
+  labs(
+    title = "Normality QQ Plot of Plant q0",
+    x = element_blank(),
+    y = element_blank()
+  )
+
+
+ggplot(
+  all_data_long |> 
+    filter(group == "plant", 
+           measure == "q1"),
+  aes(sample = value)) +
+  geom_qq_line(color = "purple") +
+  geom_qq() +
+  facet_wrap(~ location) +
+  theme_minimal() +
+  labs(
+    title = "Normality QQ Plot of Plant q1",
+    x = element_blank(),
+    y = element_blank()
+  )
 
 
 
+ggplot(
+  all_data_long |> 
+    filter(group == "plant", 
+           measure == "q2"),
+  aes(sample = value)) +
+  geom_qq_line(color = "purple") +
+  geom_qq() +
+  facet_wrap(~ location) +
+  theme_minimal() +
+  labs(
+    title = "Normality QQ Plot of Plant q2",
+    x = element_blank(),
+    y = element_blank()
+  )
+
+#result: none of the data is normal
+
+```
+
+
+## Wilcox test
+```{r}
+#test for difference between bird abundance in urban and rural areas
+wilcox.test(x = all_data$rural_bird_total_abundance,
+            y = all_data$urban_bird_total_abundance,
+            paired = FALSE) # argument for a paired test
+
+wilcox.test(x = all_data$rural_plant_q0,
+            y = all_data$urban_plant_q0,
+            paired = FALSE)
+
+wilcox.test(x = all_data$rural_plant_q1,
+            y = all_data$urban_plant_q1,
+            paired = FALSE)
+
+wilcox.test(x = all_data$rural_plant_q2,
+            y = all_data$urban_plant_q2,
+            paired = FALSE)
+
+all_data_long |> 
+  filter(measure == "total_abundance", group == "bird")
+  bartlett.test(all_data_long$value, all_data_long$location)
+  
+t.test(all_data$urban_bird_total_abundance, all_data$rural_bird_total_abundance,
+       alternative = "two.sided",
+       paired = FALSE,
+       var.equal = FALSE)
+
+
+```
+
+There is not a statistically significant difference (Wilcox Rank Sum with Correction, p = 0.0507) in bird abundance between rural and urban areas.
+
+There is not a statistically significant difference (Wilcox Rank Sum with Correction, p = 0.7077) in plant q0 values between rural and urban areas.
+
+There is not a statistically significant difference (Wilcox Rank Sum with Correction, p = 0.7441) in plant q1 values between rural and urban areas.
+
+There is not a statistically significant difference (Wilcox Rank Sum with Correction, p = 0.9647) in plant q2 values between rural and urban areas.
+
+Variances differ significantly (Bartlett, p < 0.05) in total bird abundances between urban and rural areas.
+
+There is not a statistically significant (Welch Two Sample T-Test, p = 0.1451) difference in mean bird abundance between urban and rural areas.
+
+## Plots
+```{r}
+
+all_data_long |> 
+  filter(group == "plant", measure %in% c("q0", "q1", "q2")) |> 
+  ggplot(aes(x = measure, y = value)) +
+    geom_boxplot() +
+    facet_wrap(~ location, nrow = 1) +  # Urban and Rural side by side
+    theme_bw() +
+    labs(x = "Diversity Order", y = "Value", title = "Boxplots of Plant Diversity Values by location")
+
+
+
+scatter_data <- tibble(
+  plant_q2 = c(all_data$urban_plant_q2, all_data$rural_plant_q2),
+  bird_abundance = c(all_data$urban_bird_total_abundance, all_data$rural_bird_total_abundance),
+  location = rep(c("urban", "rural"), each = nrow(all_data))
+)
+
+ggplot(scatter_data, aes(x = plant_q2, y = bird_abundance, color = location)) +
+  geom_point(size = 2, alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  labs(
+    title = "Plant Diversity (q2) vs Bird Abundance by Location",
+    x = "Plant Diversity Order q2 Values",
+    y = "Bird Total Abundance",
+    color = "Location"
+  )
+
+
+
+```
 
