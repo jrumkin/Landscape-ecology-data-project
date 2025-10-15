@@ -3,14 +3,15 @@ title: "Group_Assignment_Code"
 format: html
 ---
 
-
 ## Set Up
+
 ```{r}
 
 library(tidyverse)
 library(here) # file organization
 library(janitor)
 library(readxl) # reading excel files
+library(ggeffects) #model predictions
 
 
 # read in your data
@@ -33,11 +34,8 @@ orig_data <- read_xlsx(
 
 ```
 
-
-
-
-
 ## Data Proccesing
+
 ```{r}
 
 rural_bird_data <- orig_data |> #make new data frame, just rural bird data
@@ -77,8 +75,8 @@ urban_plant_data <- orig_data |> #new data frame, urban plant data only
 
 ```
 
+## Calculate Abundance and Hill Numbers
 
-## Calculate Abundance and Hill Numbers 
 ```{r}
 
 rural_bird_hill <- rural_bird_data |> #new data frame
@@ -144,8 +142,8 @@ urban_plant_hill <- urban_plant_data |>
 
 ```
 
-
 ## Join Tables
+
 ```{r}
 
 
@@ -166,8 +164,6 @@ all_data_long <- all_data |>
 
 
 ```
-
-
 
 ## Exploratory Visualizations
 
@@ -204,8 +200,8 @@ ggplot(data = all_data,
 
 ```
 
-
 ## Pearson Correlation
+
 ```{r}
 
 pearson_urban_q2 <- cor.test(all_data$urban_bird_total_abundance, all_data$urban_plant_q2, method = "pearson", use = "complete.obs")
@@ -232,13 +228,16 @@ mean(all_data$urban_bird_total_abundance, na.rm = TRUE)
 mean(all_data$rural_bird_total_abundance, na.rm = TRUE)
 #t test or looking for +- for means between sites
 
+
+
+
+
+
+
 ```
 
-
-- difference between urban and rural values
-- check data normality whenever possible
-
 ## Checking for Normality
+
 ```{r}
 
 ggplot(data = all_data, #using ggplot to visualize data
@@ -320,10 +319,24 @@ ggplot(
 
 #result: none of the data is normal
 
+#shapiro wilk tests to see if data is normally distributed
+
+shapiro.test(all_data$rural_bird_q0)
+shapiro.test(all_data$rural_bird_q1)
+shapiro.test(all_data$rural_bird_q2)
+shapiro.test(all_data$rural_bird_total_abundance)
+
+
+shapiro.test(all_data$urban_bird_q0)
+shapiro.test(all_data$urban_bird_q1)
+shapiro.test(all_data$urban_bird_q2)
+shapiro.test(all_data$urban_bird_total_abundance)
+
+
 ```
 
-
 ## Wilcox test
+
 ```{r}
 #test for difference between bird abundance in urban and rural areas
 wilcox.test(x = all_data$rural_bird_total_abundance,
@@ -343,8 +356,9 @@ wilcox.test(x = all_data$rural_plant_q2,
             paired = FALSE)
 
 all_data_long |> 
-  filter(measure == "total_abundance", group == "bird")
-  bartlett.test(all_data_long$value, all_data_long$location)
+  filter(measure == "total_abundance", group == "bird") |>
+  bartlett.test(value ~ location, data = _)
+
   
 t.test(all_data$urban_bird_total_abundance, all_data$rural_bird_total_abundance,
        alternative = "two.sided",
@@ -362,11 +376,12 @@ There is not a statistically significant difference (Wilcox Rank Sum with Correc
 
 There is not a statistically significant difference (Wilcox Rank Sum with Correction, p = 0.9647) in plant q2 values between rural and urban areas.
 
-Variances differ significantly (Bartlett, p < 0.05) in total bird abundances between urban and rural areas.
+Variances differ significantly (Bartlett, p \< 0.05) in total bird abundances between urban and rural areas.
 
 There is not a statistically significant (Welch Two Sample T-Test, p = 0.1451) difference in mean bird abundance between urban and rural areas.
 
 ## Plots
+
 ```{r}
 
 all_data_long |> 
@@ -378,25 +393,425 @@ all_data_long |>
     labs(x = "Diversity Order", y = "Value", title = "Boxplots of Plant Diversity Values by location")
 
 
-
-scatter_data <- tibble(
+#combining data to make a scatter plot of urban + rural, q2
+scatter_data_q2 <- tibble(
   plant_q2 = c(all_data$urban_plant_q2, all_data$rural_plant_q2),
   bird_abundance = c(all_data$urban_bird_total_abundance, all_data$rural_bird_total_abundance),
   location = rep(c("urban", "rural"), each = nrow(all_data))
 )
 
-ggplot(scatter_data, aes(x = plant_q2, y = bird_abundance, color = location)) +
+#creating a linear model to find r squared
+rural_q2_model <- lm(rural_bird_total_abundance ~ rural_bird_q2, data = all_data)
+r2_r_q2 <- summary(rural_q2_model)$r.squared
+
+urban_q2_model <- lm(urban_bird_total_abundance ~ urban_bird_q2, data = all_data)
+r2_u_q2 <- summary(urban_q2_model)$r.squared
+
+#create a scatter plot of urban + rural, q2
+ggplot(scatter_data_q2, aes(x = plant_q2, y = bird_abundance, color = location)) +
   geom_point(size = 2, alpha = 0.5) +
   geom_smooth(method = "lm", se = FALSE) +
   theme_bw() +
+  scale_color_manual(
+    labels = c("Urban", "Rural"),
+    values = c("#1D3DB3", "#a7c793")  # Urban = blue, Rural = green
+  ) +
   labs(
     title = "Plant Diversity (q2) vs Bird Abundance by Location",
     x = "Plant Diversity Order q2 Values",
-    y = "Bird Total Abundance",
-    color = "Location"
+    y = "Bird Total Abundance"
+  ) +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("R² = ", round(r2_u_q2, 3)),
+           hjust = 1.1, vjust = 3.0,   # Adjust vertical spacing as needed
+           size = 4,
+           fontface = "italic",
+           color = "#1D3DB3") +  # Blue for urban
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("R² = ", round(r2_r_q2, 3)),
+           hjust = 1.1, vjust = 1.5,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "#a7c793")    # Green for rural
+
+
+
+
+
+
+
+scatter_data_q0 <- tibble(
+  plant_q0 = c(all_data$urban_plant_q0, all_data$rural_plant_q0),
+  bird_abundance = c(all_data$urban_bird_total_abundance, all_data$rural_bird_total_abundance),
+  location = rep(c("urban", "rural"), each = nrow(all_data))
+)
+
+ggplot(scatter_data_q0, aes(x = plant_q0, y = bird_abundance, color = location)) +
+  geom_point(size = 2, alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  scale_color_manual(labels = c("urban", "rural"), #coloring the groups manually
+                       values = c("#1D3DB3", "#a7c793")) +
+  labs(
+    title = "Plant Diversity (q0) vs Bird Abundance by Location",
+    x = "Plant Diversity Order q0 (richness) Values",
+    y = "Bird Total Abundance"
+  )
+
+
+
+
+
+```
+
+**Figure n. Plant Diversity (Order q2: inverse shannon) vs Bird Abundance in rural and urban areas.** Data from Utrecht University citizen science data collection. Points represent rural data (n = ) and urban data (n = ). The lines represent linear models, with R squared values listed for both lines. Colors represent site type (blue: urban, green: rural).
+
+## Building a lm model to get r squared
+
+```{r}
+
+# I took this and added models and r squared values to the q2 plot
+
+# Create the model
+rural_q2_mod <- lm(rural_bird_total_abundance ~ rural_plant_q2, data = all_data)
+r2 <- summary(rural_q2_mod)$r.squared
+
+
+ggplot(all_data, 
+       aes(x = rural_bird_q2, y = rural_bird_total_abundance)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("R² = ", round(r2, 3)),
+           hjust = 1.1, vjust = 1.5,
+           size = 4,
+           fontface = "italic",
+           color = "blue") +
+  theme_minimal() +
+  labs(
+    title = "Rural: Bird Abundance vs Plant Diversity (q2)",
+    x = "Plant Diversity (q2)",
+    y = "Bird Total Abundance"
+  )
+
+
+
+
+```
+
+## Linear Models, Finding R2 Values
+
+```{r}
+
+#linear model, rural, q2
+lm_r_q2_mod <- lm(rural_bird_total_abundance ~ rural_plant_q2, data = all_data)
+lm_r_q2_R2 <- summary(lm_r_q2_mod)$r.squared
+
+#linear model, rural q1
+lm_r_q1_mod <- lm(rural_bird_total_abundance ~ rural_plant_q1, data = all_data)
+lm_r_q1_R2 <- summary(lm_r_q1_mod)$r.squared
+
+#linear model, rural, q0
+lm_r_q0_mod <- lm(rural_bird_total_abundance ~ rural_plant_q0, data = all_data)
+lm_r_q0_R2 <- summary(lm_r_q0_mod)$r.squared
+
+
+
+
+#linear model, urban, q2
+lm_u_q2_mod <- lm(urban_bird_total_abundance ~ urban_plant_q2, data = all_data)
+lm_u_q2_R2 <- summary(lm_u_q2_mod)$r.squared
+
+#linear model, urban, q1
+lm_u_q1_mod <- lm(urban_bird_total_abundance ~ urban_plant_q1, data = all_data)
+lm_u_q1_R2 <- summary(lm_u_q1_mod)$r.squared
+
+#linear model, urban, q0
+lm_u_q0_mod <- lm(urban_bird_total_abundance ~ urban_plant_q0, data = all_data)
+lm_u_q0_R2 <- summary(lm_u_q0_mod)$r.squared
+
+
+```
+
+The highest r squared value (r^2^ = 0.04) is between bird abundance and plant species richness (diversity order q0), in rural areas.
+
+
+## Testing Logarithmic Models
+```{r}
+
+#log model, rural, q2
+log_r_q2_mod <-  lm(rural_bird_total_abundance ~log(rural_plant_q2), data = all_data)
+summary(log_r_q2_mod)
+log_r_q2_R2 <- summary(log_r_q2_mod)$r.squared
+
+#log model, rural, q1
+log_r_q1_mod <-  lm(rural_bird_total_abundance ~log(rural_plant_q1), data = all_data)
+log_r_q1_R2 <- summary(log_r_q1_mod)$r.squared
+
+#log model, rural, q0
+log_r_q0_mod <-  lm(rural_bird_total_abundance ~log(rural_plant_q0), data = all_data)
+log_r_q0_R2 <- summary(log_r_q0_mod)$r.squared
+
+
+
+#log model, urban, q2
+log_u_q2_mod <-  lm(urban_bird_total_abundance ~log(urban_plant_q2), data = all_data)
+log_u_q2_R2 <- summary(log_u_q2_mod)$r.squared
+
+#log model, urban, q1
+log_u_q1_mod <-  lm(urban_bird_total_abundance ~log(urban_plant_q1), data = all_data)
+log_u_q1_R2 <- summary(log_u_q1_mod)$r.squared
+
+#log model, urban, q0
+log_u_q0_mod <-  lm(urban_bird_total_abundance ~log(urban_plant_q0), data = all_data)
+log_u_q0_R2 <- summary(log_u_q0_mod)$r.squared
+
+
+```
+
+Highest r squared is between rural bird abundance and plant species richness (diversity order q0).
+
+
+## Testing Quadratic Models
+```{r}
+
+#quadratic model, rural, q2
+qm_r_q2_mod <- lm(rural_bird_total_abundance ~ rural_plant_q2 + I(rural_plant_q2^2), data = all_data)
+summary(qm_r_q2_mod)
+qm_r_q2_R2 <- summary(qm_r_q2_mod)$r.squared
+
+qm_r_q1_mod <- lm(rural_bird_total_abundance ~ rural_plant_q1 + I(rural_plant_q1^2), data = all_data)
+summary(qm_r_q1_mod)
+qm_r_q1_R2 <- summary(qm_r_q1_mod)$r.squared
+
+qm_r_q0_mod <- lm(rural_bird_total_abundance ~ rural_plant_q0 + I(rural_plant_q0^2), data = all_data)
+summary(qm_r_q0_mod)
+qm_r_q0_R2 <- summary(qm_r_q0_mod)$r.squared
+
+
+#quadratic model, urban, q2
+qm_u_q2_mod <- lm(urban_bird_total_abundance ~ urban_plant_q2 + I(urban_plant_q2^2), data = all_data)
+summary(qm_u_q2_mod)
+qm_u_q2_R2 <- summary(qm_u_q2_mod)$r.squared
+
+qm_u_q1_mod <- lm(urban_bird_total_abundance ~ urban_plant_q1 + I(urban_plant_q1^2), data = all_data)
+summary(qm_u_q1_mod)
+qm_u_q1_R2 <- summary(qm_u_q1_mod)$r.squared
+
+qm_u_q0_mod <- lm(urban_bird_total_abundance ~ urban_bird_q0 + I(urban_bird_q0^2), data = all_data)
+summary(qm_u_q0_mod)
+qm_u_q0_R2 <- summary(qm_u_q0_mod)$r.squared
+
+
+```
+
+The highest r squared values for quadratic models are with rural q0 (r2 = 0.061), urban q0 (r2 = 0.062), urban q1 (r2 = 0.061).
+
+## Plotting q0 models
+```{r}
+
+#rural q0, linear model
+lm_r_q0_preds <- ggpredict(
+  lm_r_q0_mod,      # model object
+  terms = "rural_plant_q0"   # predictor (in quotation marks)
+)
+
+log_r_q0_preds <- ggpredict(
+  log_r_q0_mod,
+  terms = "rural_plant_q0"
+)
+
+gm_r_q0_preds <- ggpredict(
+  qm_r_q0_mod,
+  terms = "rural_plant_q0"
+)
+
+ggplot(data = all_data,
+       aes(x = rural_plant_q0,
+           y = rural_bird_total_abundance)) +
+  geom_jitter(height = 0,
+              width = .5) +
+  geom_line(data = lm_r_q0_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#1D3DB3") +
+  geom_line(data = log_r_q0_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#B3451D") +
+  geom_line(data = gm_r_q0_preds,
+            aes(x = x,
+                y = predicted),
+            color = "darkgreen") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Linear: R² = ", round(lm_r_q0_R2, 3)),
+           hjust = 1.15, vjust = 3.9,   # Adjust vertical spacing as needed
+           size = 4,
+           fontface = "italic",
+           color = "#1D3DB3") +  # Blue for urban
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Logarithmic: R² = ", round(log_r_q0_R2, 3)),
+           hjust = 1.1, vjust = 2.7,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "#B3451D") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Quadratic: R² = ", round(qm_r_q0_R2, 3)),
+           hjust = 1.1, vjust = 1.5,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "darkgreen") +
+  labs(
+    title = "Rural: Bird Abundance vs Plant Species Richness (Diversity Order q0) \nTesting Models",
+    x = "Plant Diversity (q0)",
+    y = "Bird Total Abundance"
   )
 
 
 
 ```
+
+## Plotting q1 models
+```{r}
+
+
+#rural q0, linear model
+lm_r_q1_preds <- ggpredict(
+  lm_r_q1_mod,      # model object
+  terms = "rural_plant_q1"   # predictor (in quotation marks)
+)
+
+log_r_q1_preds <- ggpredict(
+  log_r_q1_mod,
+  terms = "rural_plant_q1"
+)
+
+gm_r_q1_preds <- ggpredict(
+  qm_r_q1_mod,
+  terms = "rural_plant_q1"
+)
+
+ggplot(data = all_data,
+       aes(x = rural_plant_q1,
+           y = rural_bird_total_abundance)) +
+  geom_jitter(height = 0,
+              width = .5) +
+  geom_line(data = lm_r_q1_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#1D3DB3") +
+  geom_line(data = log_r_q1_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#B3451D") +
+  geom_line(data = gm_r_q1_preds,
+            aes(x = x,
+                y = predicted),
+            color = "darkgreen") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Linear: R² = ", round(lm_r_q1_R2, 3)),
+           hjust = 1.15, vjust = 3.9,   # Adjust vertical spacing as needed
+           size = 4,
+           fontface = "italic",
+           color = "#1D3DB3") +  # Blue for urban
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Logarithmic: R² = ", round(log_r_q1_R2, 3)),
+           hjust = 1.1, vjust = 2.7,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "#B3451D") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Quadratic: R² = ", round(qm_r_q1_R2, 3)),
+           hjust = 1.1, vjust = 1.5,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "darkgreen") +
+  labs(
+    title = "Rural: Bird Abundance vs Plant Diversity (Order q1) \nTesting Models",
+    x = "Plant Diversity (q1)",
+    y = "Bird Total Abundance"
+  )
+
+
+```
+
+
+
+## Plotting q2 models
+```{r}
+
+
+#rural q2, linear model
+lm_r_q2_preds <- ggpredict(
+  lm_r_q2_mod,      # model object
+  terms = "rural_plant_q2"   # predictor (in quotation marks)
+)
+
+log_r_q2_preds <- ggpredict(
+  log_r_q2_mod,
+  terms = "rural_plant_q2"
+)
+
+gm_r_q2_preds <- ggpredict(
+  qm_r_q2_mod,
+  terms = "rural_plant_q2"
+)
+
+ggplot(data = all_data,
+       aes(x = rural_plant_q2,
+           y = rural_bird_total_abundance)) +
+  geom_jitter(height = 0,
+              width = .5) +
+  geom_line(data = lm_r_q2_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#1D3DB3") +
+  geom_line(data = log_r_q2_preds,
+            aes(x = x,
+                y = predicted),
+            color = "#B3451D") +
+  geom_line(data = gm_r_q2_preds,
+            aes(x = x,
+                y = predicted),
+            color = "darkgreen") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Linear: R² = ", round(lm_r_q2_R2, 3)),
+           hjust = 1.15, vjust = 3.9,   # Adjust vertical spacing as needed
+           size = 4,
+           fontface = "italic",
+           color = "#1D3DB3") +  # Blue for urban
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Logarithmic: R² = ", round(log_r_q2_R2, 3)),
+           hjust = 1.1, vjust = 2.7,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "#B3451D") +
+  annotate("text",
+           x = Inf, y = Inf,
+           label = paste0("Quadratic: R² = ", round(qm_r_q2_R2, 3)),
+           hjust = 1.1, vjust = 1.5,   # Slightly lower than the first
+           size = 4,
+           fontface = "italic",
+           color = "darkgreen") +
+  labs(
+    title = "Rural: Bird Abundance vs Plant Diversity (Order q2) \nTesting Models",
+    x = "Plant Diversity (q2)",
+    y = "Bird Total Abundance"
+  )
+
+
+```
+
+
 
